@@ -40,16 +40,30 @@ def separa_produtos():
     tri = pd.concat(tri, axis=0, ignore_index=True)
     sem = pd.concat(sem, axis=0, ignore_index=True)
     anu = pd.concat(anu, axis=0, ignore_index=True)
-    return bases, men, tri, sem, anu, out
+    return [bases, men, tri, sem, anu, out]
 
 
-def exporta_produtos():
-    b, m, t, s, a, o = separa_produtos()
-    produtos = [b, m, t, s, a, o]
-    diretorios = ["base.csv", "mensal.csv", "trimestral.csv", "semestral.csv", "anual.csv", "outros.csv"]
-    local = Path('saídas')
+# def exporta_produtos():
+#     b, m, t, s, a, o = separa_produtos()
+#     produtos = [b, m, t, s, a, o]
+#     diretorios = ["base.csv", "mensal.csv", "trimestral.csv", "semestral.csv", "anual.csv", "outros.csv"]
+#     local = Path('saídas')
+#     for i, produto in enumerate(produtos):
+#         local_prod = local / diretorios[i]
+#         produto.to_csv(local_prod)
+
+
+def organiza_maturidade():
+    nomes = []
+    produtos = separa_produtos()
     for i, produto in enumerate(produtos):
-        local_prod = local / diretorios[i]
-        produto.to_csv(local_prod)
+        produtos[i].set_index(["Data/Hora"], inplace=True)
+        ponderada = (produto['MWh'] * produto['Preço (R$)'])
+        ponderada.name = "Ponderada"
+        produtos[i] = pd.concat([produto, ponderada], axis=1)
+        nomes.append(produtos[i]["Produto"])
+        produtos[i].drop(["Preço (R$)", "Tipo Contrato", "MWm", "Cancelado", "Produto"], axis=1, inplace=True)
+    produtos[5].groupby("Data/Hora").sum()
+    return produtos, nomes
 
-exporta_produtos()
+p, n = organiza_maturidade()
