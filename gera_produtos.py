@@ -55,15 +55,21 @@ def separa_produtos():
 
 def organiza_maturidade():
     nomes = []
+    norm_tab_vol = []
+    norm_tab_pon = []
     produtos = separa_produtos()
     for i, produto in enumerate(produtos):
-        produtos[i].set_index(["Data/Hora"], inplace=True)
+        produtos[i]["Data/Hora"].dt.strftime("%Y-%m-%d")
+        # produtos[i].set_index(["Data/Hora"], inplace=True)
         ponderada = (produto['MWh'] * produto['Preço (R$)'])
         ponderada.name = "Ponderada"
         produtos[i] = pd.concat([produto, ponderada], axis=1)
+        norm_tab_pon.append(pd.pivot_table(produtos[i], values = ['Ponderada'], index=['Data/Hora'], columns=['Produto']))
+        norm_tab_vol.append(pd.pivot_table(produtos[i], values = ['MWh'], index=['Data/Hora'], columns=['Produto']))
         nomes.append(produtos[i]["Produto"])
-        produtos[i].drop(["Preço (R$)", "Tipo Contrato", "MWm", "Cancelado", "Produto"], axis=1, inplace=True)
-    produtos[5].groupby("Data/Hora").sum()
-    return produtos, nomes
+        produtos[i].drop(["Preço (R$)", "Tipo Contrato", "MWm", "Cancelado"], axis=1, inplace=True)
+    # produtos[5].groupby("Data/Hora").sum()
+    return produtos, nomes, norm_tab_vol, norm_tab_pon
 
-p, n = organiza_maturidade()
+p, n, v, po = organiza_maturidade()
+po[0] = po[0]/p[0]
