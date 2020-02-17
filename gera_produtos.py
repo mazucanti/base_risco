@@ -53,23 +53,29 @@ def separa_produtos():
 #         produto.to_csv(local_prod)
 
 
-def organiza_maturidade():
-    nomes = []
+def calcula_ponderada():
     norm_tab_vol = []
     norm_tab_pon = []
     produtos = separa_produtos()
-    for i, produto in enumerate(produtos):
-        produtos[i]["Data/Hora"].dt.strftime("%Y-%m-%d")
-        # produtos[i].set_index(["Data/Hora"], inplace=True)
-        ponderada = (produto['MWh'] * produto['Preço (R$)'])
+    for i in range(len(produtos)):
+        indices = produtos[i][produtos[i]['Cancelado'] == 'Sim'].index
+        produtos[i].drop(indices, axis=0, inplace=True)
+        produtos[i]['Data/Hora'] = pd.to_datetime(produtos[i]["Data/Hora"], format="%d/%m/%Y %H:%M:%S")
+        produtos[i]["Data/Hora"] = produtos[i]["Data/Hora"].dt.strftime("%Y-%m-%d")
+        ponderada = (produtos[i]['MWh'] * produtos[i]['Preço (R$)'])
         ponderada.name = "Ponderada"
-        produtos[i] = pd.concat([produto, ponderada], axis=1)
+        produtos[i] = pd.concat([produtos[i], ponderada], axis=1)
         norm_tab_pon.append(pd.pivot_table(produtos[i], values = ['Ponderada'], index=['Data/Hora'], columns=['Produto']))
         norm_tab_vol.append(pd.pivot_table(produtos[i], values = ['MWh'], index=['Data/Hora'], columns=['Produto']))
-        nomes.append(produtos[i]["Produto"])
+        norm_tab_pon[i] = norm_tab_pon[i].groupby(level=0).sum()
+        norm_tab_pon[i] = norm_tab_pon[i].T.reset_index(0, drop=True)
+        norm_tab_pon[i] = norm_tab_pon[i].T
+        norm_tab_vol[i] = norm_tab_vol[i].groupby(level=0).sum()
+        norm_tab_vol[i] = norm_tab_vol[i].T.reset_index(0, drop=True)
+        norm_tab_vol[i] = norm_tab_vol[i].T
         produtos[i].drop(["Preço (R$)", "Tipo Contrato", "MWm", "Cancelado"], axis=1, inplace=True)
-    # produtos[5].groupby("Data/Hora").sum()
-    return produtos, nomes, norm_tab_vol, norm_tab_pon
+        norm_tab_pon[i] = norm_tab_pon[i]/norm_tab_vol[i]
+    return norm_tab_pon
 
-p, n, v, po = organiza_maturidade()
-po[0] = po[0]/p[0]
+
+val = calcula_ponderada()
