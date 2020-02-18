@@ -8,6 +8,9 @@ Created on Thu Feb  6 17:39:36 2020
 
 import pandas as pd
 from pathlib import Path
+import datetime as dt
+import locale
+locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
 
 
 def importa_bases_negocios():
@@ -78,4 +81,25 @@ def calcula_ponderada():
     return norm_tab_pon
 
 
-val = calcula_ponderada()
+def organiza_maturidade():
+    maturidades = []
+    valores_pond = calcula_ponderada()
+    datas = valores_pond[1].index.tolist()
+    produtos = valores_pond[1].columns.tolist()
+    for i in range(len(produtos)):
+        produtos[i] = produtos[i].split()
+        produtos[i] = dt.datetime.strptime(produtos[i][3], "%b/%y").date()
+    for j in range(len(datas)):
+        datas[j] = str(datas[j])
+        datas[j] = dt.datetime.strptime(datas[j], "%Y-%m-%d").date()
+    base = pd.DataFrame(index = datas, columns = maturidades)
+    for i in range(len(produtos)):
+        for j in range(len(datas)):
+            maturidade = produtos[i].month - datas[j].month + (12 *( produtos[i].year - datas[j].year))
+            maturidade =  maturidade if maturidade >= 0 else "dump"
+            base.loc[datas[j], maturidade] = valores_pond[1].iloc[j,i]
+    base.drop(['dump'], axis=1, inplace=True)
+    base = base.T
+    base.sort_index(inplace=True)
+    base = base.T
+    return produtos, datas, base
