@@ -8,6 +8,7 @@ Created on Thu Feb  6 17:39:36 2020
 
 import pandas as pd
 from pathlib import Path
+import numpy as np
 import datetime as dt
 import locale
 locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
@@ -81,6 +82,42 @@ def calcula_ponderada():
     return norm_tab_pon
 
 
+def adiciona_produto(valores, base, tipo):
+    datas = valores.index.tolist()
+    produtos = valores.columns.tolist()
+    if tipo == "MEN":
+        for i in range(len(produtos)):
+            produtos[i] = produtos[i].split()
+            produtos[i] = dt.datetime.strptime(produtos[i][3], "%b/%y").date()
+        for j in range(len(datas)):
+            datas[j] = str(datas[j])
+            datas[j] = dt.datetime.strptime(datas[j], "%Y-%m-%d").date()
+        for i in range(len(produtos)):
+            for j in range(len(datas)):
+                maturidade = produtos[i].month - datas[j].month + (12 *( produtos[i].year - datas[j].year))
+                maturidade =  maturidade if maturidade >= 0 else "dump"
+                base.loc[datas[j], maturidade] = valores.iloc[j,i]
+    elif tipo == "TRI":
+        for i in range(len(produtos)):
+            produtos[i] = produtos[i].split()
+            produtos[i] = dt.datetime.strptime(produtos[i][4], "%b/%y").date()
+            produtos[i] = (produtos[i] - dt.timedelta(weeks=8),
+                           produtos[i] - dt.timedelta(weeks=4),
+                           produtos[i])
+        for j in range(len(datas)):
+            datas[j] = str(datas[j])
+            datas[j] = dt.datetime.strptime(datas[j], "%Y-%m-%d").date()
+        for i in range(len(produtos)):
+            for j in range(len(datas)):
+                for k in range(len(produtos[i])):
+                    maturidade = produtos[i][k].month - datas[j].month + (12 *( produtos[i][k].year - datas[j].year))
+                    if maturidade > i+k or np.isnan(base.loc[datas[j], maturidade]):
+                        maturidade =  maturidade if maturidade >= 0 else "dump"
+                        base.loc[datas[j], maturidade] = valores.iloc[j,i]
+                    else:
+                        continue
+    return base
+
 def organiza_maturidade():
     maturidades = []
     valores_pond = calcula_ponderada()
@@ -93,13 +130,10 @@ def organiza_maturidade():
         datas[j] = str(datas[j])
         datas[j] = dt.datetime.strptime(datas[j], "%Y-%m-%d").date()
     base = pd.DataFrame(index = datas, columns = maturidades)
-    for i in range(len(produtos)):
-        for j in range(len(datas)):
-            maturidade = produtos[i].month - datas[j].month + (12 *( produtos[i].year - datas[j].year))
-            maturidade =  maturidade if maturidade >= 0 else "dump"
-            base.loc[datas[j], maturidade] = valores_pond[1].iloc[j,i]
+    base = adiciona_produto(valores_pond[1], base, "MEN")
+    base = adiciona_produto(valores_pond[2], base, "TRI")
     base.drop(['dump'], axis=1, inplace=True)
     base = base.T
     base.sort_index(inplace=True)
     base = base.T
-    return produtos, datas, base
+    return base
