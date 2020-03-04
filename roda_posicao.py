@@ -11,3 +11,6 @@ import pandas as pd
 import numpy as np
 from src import gera_base_retorno
 
+base, retorno = gera_base_retorno.trata_retorno()
+base.to_excel('saídas/base.xls')
+retorno.to_excel('saídas/retorno.xls')

@@ -16,7 +16,7 @@ locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
 
 def importa_bases_negocios():
     bases_negocios = []
-    diretorios = Path('../entradas/').glob('**/*')
+    diretorios = Path('entradas/').glob('**/*')
     arquivos = [diretorio for diretorio in diretorios if diretorio.suffix == '.xlsx']
     for arquivo in arquivos:
         df = pd.read_excel(arquivo)
@@ -107,7 +107,7 @@ def adiciona_produto(valores, base, tipo):
                     maior_maturidade = base.columns.tolist()
                     maior_maturidade = maior_maturidade[len(maior_maturidade)-1]
                     maturidade = produtos[i][k].month - datas[j].month + (12 *(produtos[i][k].year - datas[j].year))
-                    maturidade =  maturidade if maturidade >= 3 and maturidade <= 24 else "dump"
+                    maturidade =  maturidade if maturidade >= 0 and maturidade <= 24 else "dump"
                     if maturidade == "dump": continue
                     if maturidade > maior_maturidade or np.isnan(base.loc[datas[j], maturidade]):
                         base.loc[datas[j], maturidade] = valores.iloc[j,i]
@@ -133,7 +133,7 @@ def adiciona_produto(valores, base, tipo):
                     maior_maturidade = base.columns.tolist()
                     maior_maturidade = maior_maturidade[len(maior_maturidade)-1]
                     maturidade = produtos[i][k].month - datas[j].month + (12 * (produtos[i][k].year - datas[j].year))
-                    maturidade =  maturidade if maturidade >= 3 and maturidade <= 24 else "dump"
+                    maturidade =  maturidade if maturidade >= 0 and maturidade <= 24 else "dump"
                     if maturidade == "dump": continue
                     if maturidade > maior_maturidade or np.isnan(base.loc[datas[j], maturidade]):
                         base.loc[datas[j], maturidade] = valores.iloc[j,i]
@@ -157,7 +157,7 @@ def adiciona_produto(valores, base, tipo):
                     maior_maturidade = base.columns.tolist()
                     maior_maturidade = maior_maturidade[len(maior_maturidade)-1]
                     maturidade = produtos[i][k].month - datas[j].month + (12 * (produtos[i][k].year - datas[j].year))
-                    maturidade =  maturidade if maturidade >= 3 and maturidade <= 24 else "dump"
+                    maturidade =  maturidade if maturidade >= 0 and maturidade <= 24 else "dump"
                     if maturidade == "dump": continue
                     if maturidade > maior_maturidade or np.isnan(base.loc[datas[j], maturidade]):
                         base.loc[datas[j], maturidade] = valores.iloc[j,i]
