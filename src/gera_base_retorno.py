@@ -205,3 +205,10 @@ def trata_retorno():
         if retorno.loc[datas[k],:].sum() == 0: retorno.drop(datas[k], axis=0, inplace=True)
     retorno.fillna(0, inplace=True)
     return base, retorno
+
+
+def exporta():
+    base, retorno = trata_retorno()
+    saida = Path('saídas/')
+    base.to_excel(saida / "base.xls")
+    retorno.to_excel(saida / "retorno.xls")
