@@ -8,51 +8,88 @@ Created on Mon Mar  2 14:57:02 2020
 
 
 import pandas as pd
-from calendar import monthrange
 from datetime import date
 from numpy import arange
+import locale
+from pathlib import Path
 from src import gera_base_retorno
 
+locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
 
-def gera_sim(prod, retorno):
+def trata_port():
+    entrada = Path("entradas/portfolio.xls")
+    port = pd.read_excel(entrada,index_col=[0,1])
+    port.fillna(0, inplace=True)
+
+    port.loc[("Venda","Volume"),:] *= port.columns.days_in_month * 24
+    port.loc[("Compra","Volume"),:] *= port.columns.days_in_month * 24
+
+    total_port = (port.loc[("Compra","Preço"),:] * port.loc[("Compra","Volume"),:]).sum()
+    total_port -= (port.loc[("Venda","Preço"),:] * port.loc[("Venda","Volume"),:]).sum()
+    total_port = round(total_port,2)
+
+    return total_port
+
+
+def gera_sim(posi, retorno):
+    
     hoje = date.today()
-    dias_mes = monthrange(prod[2].year, prod[2].month)
-    maturidade = prod[2].month - hoje.month + (prod[2].year - hoje.year) * 12
-    sim = (retorno[maturidade]) * prod[1] * dias_mes[1] * 24 * prod[0]
+    maturidade = posi.columns.month - hoje.month + (posi.columns.year - hoje.year) * 12
+    dias_mes = posi.columns.days_in_month
+    posi.columns = maturidade
+    print(dias_mes)
+    dias_mes = dias_mes.to_series(index=maturidade)
+    print(dias_mes)
+    posi.drop(maturidade[maturidade < 0], axis=1, inplace=True)
+    maturidade = posi.columns
+    dias_mes = dias_mes.drop(maturidade[maturidade < 0])
+    sim = (retorno[maturidade]) * posi.loc["Preço",:]
+    print(dias_mes)
+    sim *= posi.loc["Volume",:]
+    sim *= dias_mes 
+    sim *= 24
+    print(sim)
+    sim = sim.sum(axis=1)
+    print(sim)
     sim.sort_values(inplace=True)
     tam = sim.index.size
     sim.index = arange(tam)
     return sim
 
 
-def calc_var5(sim):
+def calc_casos(sim):
     pos_5 = round(sim.index.size * 0.05)
     var5 = sim[pos_5]
     var5 = round(var5,2)
-    return var5
+    cvar5 = round(sim[0:pos_5].mean(),2)
+    pior = round(sim[0],2)
+    pos_50 = sim.index.size // 2
+    var_50 = round(sim[pos_50],2)
+    return [var_50, var5, cvar5, pior]
 
 
 def main():
-    base, retorno = gera_base_retorno.trata_retorno()
-    base.to_excel('saídas/base.xls')
-    retorno.to_excel('saídas/retorno.xls')
+    loc_ret = Path("saídas/retorno.xls")
+    if not loc_ret.is_file():
+        gera_base_retorno.exporta()
+    retorno = pd.read_excel(loc_ret)
     
+    entrada = Path("entradas/posição.xls")
+    posi = pd.read_excel(entrada, index_col=0)
 
-    # vol = float(input("Digite o volume comprado (em MWmed): "))
-    # pre = float(input("Digite o preço do MWmed (em R$): "))
-    # mes = int(input("Digite o mês do produto: "))
-    # ano = int(input("Digite o ano do produto: "))
+    sim = gera_sim(posi, retorno)
+    dados_var = calc_casos(sim)
+    total_port = trata_port()
 
-    vol = 1
-    pre = 100
-    mes = 5
-    ano = 2020
+    final = pd.DataFrame(index=["Base", "VaR 5%", "CVaR", "Pior Caso"],columns=["Portfólio", "Variação Diária", "Variação Semanal"])
+    final.iloc[0,0] = total_port
+    final["Variação Diária"] = dados_var
+    final["Variação Semanal"] = round(final["Variação Diária"] * (5**0.5), 2)
+    final.iloc[1:4,0] = total_port + final.iloc[1:4,1]
 
-    prod = (vol, pre, date(ano,mes,1))
-    sim = gera_sim(prod, retorno)
-    sim.to_excel('debug.xls')
-    var5 = calc_var5(sim)
-    print(var5)
+    saida = Path("saídas/risco.xls")
+    final.to_excel(saida)
+
+
     
-
 main()
