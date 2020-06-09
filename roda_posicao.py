@@ -24,8 +24,8 @@ def trata_port():
     port.loc[("Venda","Volume"),:] *= port.columns.days_in_month * 24
     port.loc[("Compra","Volume"),:] *= port.columns.days_in_month * 24
 
-    total_port = (port.loc[("Compra","Preço"),:] * port.loc[("Compra","Volume"),:]).sum()
-    total_port -= (port.loc[("Venda","Preço"),:] * port.loc[("Venda","Volume"),:]).sum()
+    total_port = (port.loc[("Venda","Preço"),:] * port.loc[("Venda","Volume"),:]).sum()
+    total_port -= (port.loc[("Compra","Preço"),:] * port.loc[("Compra","Volume"),:]).sum()
     total_port = round(total_port,2)
 
     return total_port
@@ -37,24 +37,20 @@ def gera_sim(posi, retorno):
     maturidade = posi.columns.month - hoje.month + (posi.columns.year - hoje.year) * 12
     dias_mes = posi.columns.days_in_month
     posi.columns = maturidade
-    print(dias_mes)
     dias_mes = dias_mes.to_series(index=maturidade)
-    print(dias_mes)
     posi.drop(maturidade[maturidade < 0], axis=1, inplace=True)
     maturidade = posi.columns
     dias_mes = dias_mes.drop(maturidade[maturidade < 0])
     sim = (retorno[maturidade]) * posi.loc["Preço",:]
-    print(dias_mes)
     sim *= posi.loc["Volume",:]
     sim *= dias_mes 
     sim *= 24
-    print(sim)
     sim = sim.sum(axis=1)
-    print(sim)
     sim.sort_values(inplace=True)
     tam = sim.index.size
     sim.index = arange(tam)
-    return sim
+    vol = (posi.loc["Volume"]*dias_mes).sum() * 24
+    return sim, vol
 
 
 def calc_casos(sim):
@@ -77,15 +73,16 @@ def main():
     entrada = Path("entradas/posição.xls")
     posi = pd.read_excel(entrada, index_col=0)
 
-    sim = gera_sim(posi, retorno)
+    sim, vol = gera_sim(posi, retorno)
     dados_var = calc_casos(sim)
     total_port = trata_port()
 
-    final = pd.DataFrame(index=["Base", "VaR 5%", "CVaR", "Pior Caso"],columns=["Portfólio", "Variação Diária", "Variação Semanal"])
+    final = pd.DataFrame(index=["Base", "VaR 5%", "CVaR", "Pior Caso"],columns=["Portfólio", "Variação Diária", "Variação Semanal", "R$/MWh"])
     final.iloc[0,0] = total_port
     final["Variação Diária"] = dados_var
     final["Variação Semanal"] = round(final["Variação Diária"] * (5**0.5), 2)
     final.iloc[1:4,0] = total_port + final.iloc[1:4,1]
+    final["R$/MWh"] = final["Variação Semanal"] / (vol)
 
     saida = Path("saídas/risco.xls")
     final.to_excel(saida)
