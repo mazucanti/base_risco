@@ -204,6 +204,16 @@ def trata_retorno():
     for k in range(len(datas)):
         if retorno.loc[datas[k],:].sum() == 0: retorno.drop(datas[k], axis=0, inplace=True)
     retorno.fillna(0, inplace=True)
+
+    for col, val in retorno.iteritems():
+        if col == "Unnamed: 0": continue
+        desv = val.std()
+        media = val.mean()
+        lim_pos = media + 5 * desv
+        lim_neg = media - 5 * desv
+        retorno[val > lim_pos] = 0 
+        retorno[val < lim_neg] = 0
+
     return base, retorno
 
 
